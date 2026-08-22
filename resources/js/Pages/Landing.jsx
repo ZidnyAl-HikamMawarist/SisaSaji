@@ -178,9 +178,9 @@ export default function Landing() {
                         <h4 className="text-white font-bold mb-5 tracking-wide text-sm">Produk</h4>
                         <ul className="space-y-3 text-sm">
                             <li><Link href="/app" className="hover:text-terracotta-400 transition-colors">Racik Resep AI</Link></li>
-                            <li><a href="#" className="hover:text-terracotta-400 transition-colors">Buku Resep Komunitas</a></li>
-                            <li><a href="#" className="hover:text-terracotta-400 transition-colors">Cara Kerja AI</a></li>
-                            <li><a href="#" className="hover:text-terracotta-400 transition-colors">Pembaruan Versi</a></li>
+                            <li><a href="/" className="hover:text-terracotta-400 transition-colors">Buku Resep Komunitas</a></li>
+                            <li><a href="/" className="hover:text-terracotta-400 transition-colors">Cara Kerja AI</a></li>
+                            <li><a href="/" className="hover:text-terracotta-400 transition-colors">Pembaruan Versi</a></li>
                         </ul>
                     </div>
 
@@ -188,10 +188,10 @@ export default function Landing() {
                     <div>
                         <h4 className="text-white font-bold mb-5 tracking-wide text-sm">Perusahaan</h4>
                         <ul className="space-y-3 text-sm">
-                            <li><a href="#" className="hover:text-terracotta-400 transition-colors">Tentang Kami</a></li>
-                            <li><a href="#" className="hover:text-terracotta-400 transition-colors">Misi Zero Waste</a></li>
-                            <li><a href="#" className="hover:text-terracotta-400 transition-colors">Karir</a></li>
-                            <li><a href="#" className="hover:text-terracotta-400 transition-colors">Kontak</a></li>
+                            <li><a href="/" className="hover:text-terracotta-400 transition-colors">Tentang Kami</a></li>
+                            <li><a href="/" className="hover:text-terracotta-400 transition-colors">Misi Zero Waste</a></li>
+                            <li><a href="/" className="hover:text-terracotta-400 transition-colors">Karir</a></li>
+                            <li><a href="/" className="hover:text-terracotta-400 transition-colors">Kontak</a></li>
                         </ul>
                     </div>
 

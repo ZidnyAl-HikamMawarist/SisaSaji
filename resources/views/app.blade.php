@@ -5,6 +5,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title inertia>{{ config('app.name', 'SisaSaji - Resep Cerdas dari Bahan di Dapurmu') }}</title>
+        <meta name="description" content="SisaSaji adalah platform AI untuk meracik resep cerdas dari bahan sisa yang ada di dapurmu. Cegah food waste sekarang!">
+        <link rel="canonical" href="{{ url()->current() }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">

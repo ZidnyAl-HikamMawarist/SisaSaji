@@ -16,7 +16,17 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        //
+        $middleware->append(function ($request, $next) {
+            $response = $next($request);
+            if (method_exists($response, 'header')) {
+                $response->header('X-Content-Type-Options', 'nosniff');
+                $response->header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+            } elseif (isset($response->headers)) {
+                $response->headers->set('X-Content-Type-Options', 'nosniff');
+                $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+            }
+            return $response;
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
