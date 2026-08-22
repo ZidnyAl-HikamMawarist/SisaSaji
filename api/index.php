@@ -11,14 +11,16 @@ $_ENV['APP_STORAGE'] = $tmpStorage;
 putenv('APP_STORAGE=' . $tmpStorage);
 
 // Force serverless-friendly drivers
-$_ENV['APP_DEBUG'] = 'true';
-putenv('APP_DEBUG=true');
+$_ENV['APP_DEBUG'] = 'false';
+putenv('APP_DEBUG=false');
 $_ENV['SESSION_DRIVER'] = 'cookie';
 putenv('SESSION_DRIVER=cookie');
 $_ENV['CACHE_STORE'] = 'array';
 putenv('CACHE_STORE=array');
 $_ENV['LOG_CHANNEL'] = 'stderr';
 putenv('LOG_CHANNEL=stderr');
+$_ENV['VIEW_COMPILED_PATH'] = "$tmpStorage/framework/views";
+putenv('VIEW_COMPILED_PATH=' . $_ENV['VIEW_COMPILED_PATH']);
 
 // Force cache paths to /tmp so Laravel doesn't use stale Vercel build caches
 $_ENV['APP_SERVICES_CACHE'] = "$tmpStorage/bootstrap/cache/services.php";
