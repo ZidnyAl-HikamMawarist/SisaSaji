@@ -15,14 +15,16 @@ class RecipeController extends Controller
     {
         $validated = $request->validate([
             'bahan_utama' => ['required', 'array', 'min:1', 'max:7'],
-            'bahan_utama.*' => ['required', 'string', 'max:50'],
+            'bahan_utama.*' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9\s]+$/'],
             'bumbu_dapur' => ['nullable', 'array', 'max:10'],
-            'bumbu_dapur.*' => ['required', 'string', 'max:50'],
+            'bumbu_dapur.*' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9\s]+$/'],
         ], [
             'bahan_utama.required' => 'Bahan utama wajib diisi minimal 1 bahan.',
             'bahan_utama.min' => 'Bahan utama wajib diisi minimal 1 bahan.',
             'bahan_utama.max' => 'Bahan utama maksimal 7 bahan.',
             'bumbu_dapur.max' => 'Bumbu dapur maksimal 10 bumbu.',
+            'bahan_utama.*.regex' => 'Bahan utama hanya boleh berisi huruf dan angka.',
+            'bumbu_dapur.*.regex' => 'Bumbu dapur hanya boleh berisi huruf dan angka.',
         ]);
 
         $bahanUtama = $validated['bahan_utama'];
