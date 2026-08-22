@@ -11,6 +11,8 @@ $_ENV['APP_STORAGE'] = $tmpStorage;
 putenv('APP_STORAGE=' . $tmpStorage);
 
 // Force serverless-friendly drivers
+$_ENV['APP_DEBUG'] = 'true';
+putenv('APP_DEBUG=true');
 $_ENV['SESSION_DRIVER'] = 'cookie';
 putenv('SESSION_DRIVER=cookie');
 $_ENV['CACHE_STORE'] = 'array';
