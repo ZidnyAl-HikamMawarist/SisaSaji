@@ -5,4 +5,25 @@
  * Forwards requests to the standard public/index.php file.
  */
 
+// Setup storage path in /tmp because Vercel is read-only
+$tmpStorage = '/tmp/storage';
+$_ENV['APP_STORAGE'] = $tmpStorage;
+putenv('APP_STORAGE=' . $tmpStorage);
+
+// Ensure essential Laravel directories exist in /tmp
+$directories = [
+    "$tmpStorage/app/public",
+    "$tmpStorage/framework/cache/data",
+    "$tmpStorage/framework/sessions",
+    "$tmpStorage/framework/testing",
+    "$tmpStorage/framework/views",
+    "$tmpStorage/logs",
+];
+
+foreach ($directories as $dir) {
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+}
+
 require __DIR__ . '/../public/index.php';
