@@ -10,6 +10,14 @@ $tmpStorage = '/tmp/storage';
 $_ENV['APP_STORAGE'] = $tmpStorage;
 putenv('APP_STORAGE=' . $tmpStorage);
 
+// Force serverless-friendly drivers
+$_ENV['SESSION_DRIVER'] = 'cookie';
+putenv('SESSION_DRIVER=cookie');
+$_ENV['CACHE_STORE'] = 'array';
+putenv('CACHE_STORE=array');
+$_ENV['LOG_CHANNEL'] = 'stderr';
+putenv('LOG_CHANNEL=stderr');
+
 // Ensure essential Laravel directories exist in /tmp
 $directories = [
     "$tmpStorage/app/public",
