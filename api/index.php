@@ -18,6 +18,7 @@ $directories = [
     "$tmpStorage/framework/testing",
     "$tmpStorage/framework/views",
     "$tmpStorage/logs",
+    "$tmpStorage/bootstrap/cache",
 ];
 
 foreach ($directories as $dir) {
