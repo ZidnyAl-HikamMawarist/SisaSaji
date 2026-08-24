@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import Navbar from '@/Components/SisaSaji/Navbar';
@@ -7,20 +7,54 @@ import FloatingActionButton from '@/Components/SisaSaji/FloatingActionButton';
 import IngredientModal from '@/Components/SisaSaji/IngredientModal';
 import LoadingState from '@/Components/SisaSaji/LoadingState';
 import RecipeResult from '@/Components/SisaSaji/RecipeResult';
+import SavedRecipesModal from '@/Components/SisaSaji/SavedRecipesModal';
 import Toast from '@/Components/SisaSaji/Toast';
 import Chip from '@/Components/SisaSaji/Chip';
 import { Utensils, ArrowRight } from 'lucide-react';
+
+const SAVED_RECIPES_STORAGE_KEY = 'sisasaji_saved_recipes';
 
 export default function Welcome() {
     // State management
     const [bahanUtama, setBahanUtama] = useState([]);
     const [bumbuDapur, setBumbuDapur] = useState([]);
+    const [preferensi, setPreferensi] = useState({
+        waktu: 'Semua',
+        pedas: 'Bebas',
+        metode: 'Bebas',
+        alat: 'Semua Alat',
+    });
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [recipe, setRecipe] = useState(null);
     const [usedBahan, setUsedBahan] = useState([]);
     const [usedBumbu, setUsedBumbu] = useState([]);
+    const [savedRecipes, setSavedRecipes] = useState([]);
     const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+
+    // Load saved recipes from localStorage on mount
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(SAVED_RECIPES_STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) setSavedRecipes(parsed);
+            }
+        } catch (e) {
+            console.warn('Failed to load saved recipes from localStorage:', e);
+        }
+    }, []);
+
+    // Sync saved recipes to localStorage
+    const updateSavedRecipes = (newList) => {
+        setSavedRecipes(newList);
+        try {
+            localStorage.setItem(SAVED_RECIPES_STORAGE_KEY, JSON.stringify(newList));
+        } catch (e) {
+            console.warn('Failed to save to localStorage:', e);
+        }
+    };
 
     // Toast helper
     const showToast = (message, type = 'warning') => {
@@ -78,7 +112,7 @@ export default function Welcome() {
     };
 
     // Submit / Generate Recipe
-    const handleSubmitRecipe = async () => {
+    const handleSubmitRecipe = async (overridePrefs = null) => {
         if (bahanUtama.length === 0) {
             showToast('Masukkan minimal 1 bahan utama untuk mencari resep.', 'warning');
             return;
@@ -91,9 +125,11 @@ export default function Welcome() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
         try {
+            const activePrefs = overridePrefs || preferensi;
             const response = await axios.post('/generate-recipe', {
                 bahan_utama: bahanUtama,
                 bumbu_dapur: bumbuDapur,
+                preferensi: activePrefs,
             });
 
             if (response.data?.success && response.data?.data) {
@@ -121,14 +157,56 @@ export default function Welcome() {
         }
     };
 
-    // Reset
-    const handleReset = () => {
-        setRecipe(null);
-        setBahanUtama([]);
-        setBumbuDapur([]);
-        setUsedBahan([]);
-        setUsedBumbu([]);
-        showToast('Daftar bahan dan resep telah direset.', 'info');
+    // Request alternative variation
+    const handleRequestVariation = () => {
+        if (!recipe) return;
+        const variationPrefs = {
+            ...preferensi,
+            variasi_dari: recipe.nama_resep,
+        };
+        showToast('Meracik variasi resep alternatif...', 'info');
+        handleSubmitRecipe(variationPrefs);
+    };
+
+    // Toggle Bookmark / Save recipe
+    const isCurrentRecipeSaved = recipe && savedRecipes.some((r) => r.recipe?.nama_resep === recipe.nama_resep);
+
+    const handleToggleSaveRecipe = () => {
+        if (!recipe) return;
+
+        if (isCurrentRecipeSaved) {
+            const updated = savedRecipes.filter((r) => r.recipe?.nama_resep !== recipe.nama_resep);
+            updateSavedRecipes(updated);
+            showToast('Resep dihapus dari Buku Resep.', 'info');
+        } else {
+            const newItem = {
+                id: Date.now(),
+                recipe: recipe,
+                usedBahan: usedBahan,
+                usedBumbu: usedBumbu,
+                savedAt: new Date().toISOString(),
+            };
+            const updated = [newItem, ...savedRecipes];
+            updateSavedRecipes(updated);
+            showToast('Resep berhasil disimpan ke Buku Resep! ⭐', 'success');
+        }
+    };
+
+    const handleLoadSavedRecipe = (item) => {
+        if (!item || !item.recipe) return;
+        setRecipe(item.recipe);
+        setUsedBahan(item.usedBahan || []);
+        setUsedBumbu(item.usedBumbu || []);
+        setBahanUtama(item.usedBahan || []);
+        setBumbuDapur(item.usedBumbu || []);
+        showToast(`Memuat resep "${item.recipe.nama_resep}"`, 'info');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleDeleteSavedRecipe = (id) => {
+        const updated = savedRecipes.filter((r) => r.id !== id);
+        updateSavedRecipes(updated);
+        showToast('Resep dihapus dari Buku Resep.', 'info');
     };
 
     const totalTags = bahanUtama.length + bumbuDapur.length;
@@ -138,7 +216,10 @@ export default function Welcome() {
             <Head title="SisaSaji - Ubah Bahan Makanan Jadi Resep Praktis" />
 
             <Toast toast={toast} onClose={hideToast} />
-            <Navbar onOpenModal={() => setIsModalOpen(true)} />
+            <Navbar
+                onOpenSavedModal={() => setIsSavedModalOpen(true)}
+                savedCount={savedRecipes.length}
+            />
 
             {/* Main Content */}
             <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
@@ -149,7 +230,9 @@ export default function Welcome() {
                         recipe={recipe}
                         usedBahan={usedBahan}
                         usedBumbu={usedBumbu}
-                        onReset={handleReset}
+                        isSaved={isCurrentRecipeSaved}
+                        onToggleSave={handleToggleSaveRecipe}
+                        onRequestVariation={handleRequestVariation}
                         onOpenModal={() => setIsModalOpen(true)}
                     />
                 )}
@@ -196,11 +279,11 @@ export default function Welcome() {
                                             onClick={() => setIsModalOpen(true)}
                                             className="text-xs font-medium text-charcoal-500 hover:text-charcoal-700 underline underline-offset-2 decoration-charcoal-300 transition-colors"
                                         >
-                                            Edit bahan
+                                            Edit bahan & preferensi
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={handleSubmitRecipe}
+                                            onClick={() => handleSubmitRecipe()}
                                             className="group inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-terracotta-500 hover:bg-terracotta-600 text-white text-xs font-semibold shadow-terracotta-glow transition-all duration-200 active:scale-[0.97]"
                                         >
                                             <span>Cari Resep Sekarang</span>
@@ -219,11 +302,21 @@ export default function Welcome() {
                 onClose={() => setIsModalOpen(false)}
                 bahanUtama={bahanUtama}
                 bumbuDapur={bumbuDapur}
+                preferensi={preferensi}
+                onChangePreferensi={setPreferensi}
                 onAddBahanUtama={handleAddBahanUtama}
                 onRemoveBahanUtama={handleRemoveBahanUtama}
                 onAddBumbuDapur={handleAddBumbuDapur}
                 onRemoveBumbuDapur={handleRemoveBumbuDapur}
-                onSubmit={handleSubmitRecipe}
+                onSubmit={() => handleSubmitRecipe()}
+            />
+
+            <SavedRecipesModal
+                isOpen={isSavedModalOpen}
+                onClose={() => setIsSavedModalOpen(false)}
+                savedRecipes={savedRecipes}
+                onLoadRecipe={handleLoadSavedRecipe}
+                onDeleteRecipe={handleDeleteSavedRecipe}
             />
 
             <FloatingActionButton

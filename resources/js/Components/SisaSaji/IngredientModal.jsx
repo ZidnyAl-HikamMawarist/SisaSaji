@@ -1,12 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { ChefHat, X, Lightbulb, ArrowRight } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ChefHat, X, Lightbulb, ArrowRight, SlidersHorizontal, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import TagInput from './TagInput';
 
 export default function IngredientModal({
     isOpen,
     onClose,
-    bahanUtama,
-    bumbuDapur,
+    bahanUtama = [],
+    bumbuDapur = [],
+    preferensi = { waktu: 'Semua', pedas: 'Bebas', metode: 'Bebas', alat: 'Semua Alat' },
+    onChangePreferensi,
     onAddBahanUtama,
     onRemoveBahanUtama,
     onAddBumbuDapur,
@@ -14,6 +16,7 @@ export default function IngredientModal({
     onSubmit,
 }) {
     const modalRef = useRef(null);
+    const [showPreferences, setShowPreferences] = useState(false);
 
     // Handle ESC key + focus trap
     useEffect(() => {
@@ -32,10 +35,48 @@ export default function IngredientModal({
 
     if (!isOpen) return null;
 
-    const quickBahanSuggestions = ['Telur', 'Nasi', 'Tahu', 'Tempe', 'Ayam', 'Mie Instan', 'Kentang', 'Wortel'];
-    const quickBumbuSuggestions = ['Bawang Merah', 'Bawang Putih', 'Cabai', 'Kecap Manis', 'Garam', 'Merica', 'Saus Tiram', 'Minyak Goreng'];
+    const quickBahanSuggestions = ['Telur', 'Nasi', 'Tahu', 'Tempe', 'Ayam', 'Mie Instan', 'Kentang', 'Wortel', 'Cabai'];
+    const quickBumbuSuggestions = ['Bawang Merah', 'Bawang Putih', 'Kecap Manis', 'Garam', 'Merica', 'Saus Tiram', 'Gula', 'Ketumbar'];
 
     const hasMinBahan = bahanUtama.length >= 1;
+
+    const filterOptions = {
+        waktu: [
+            { label: 'Semua Waktu', value: 'Semua' },
+            { label: '⚡ Kilat (< 15 mnt)', value: 'Kilat (< 15 menit)' },
+            { label: '🍲 Santai', value: 'Santai' },
+        ],
+        pedas: [
+            { label: 'Bebas', value: 'Bebas' },
+            { label: '🌱 Tidak Pedas', value: 'Tidak Pedas' },
+            { label: '🌶️ Sedang', value: 'Sedang' },
+            { label: '🔥 Pedas Nampol', value: 'Pedas Nampol' },
+        ],
+        metode: [
+            { label: 'Bebas', value: 'Bebas' },
+            { label: '🍳 Tumis / Goreng', value: 'Tumis / Goreng' },
+            { label: '🥣 Berkuah / Sup', value: 'Berkuah / Sup' },
+            { label: '🥟 Kukus / Rebus', value: 'Kukus / Rebus' },
+        ],
+        alat: [
+            { label: 'Semua Alat', value: 'Semua Alat' },
+            { label: '🍚 Rice Cooker', value: 'Hanya Rice Cooker' },
+            { label: '🍳 1 Wajan/Teflon', value: 'Hanya 1 Wajan/Teflon' },
+        ],
+    };
+
+    const hasActivePreferences = Object.entries(preferensi || {}).some(
+        ([key, val]) => val && val !== 'Semua' && val !== 'Bebas' && val !== 'Semua Alat'
+    );
+
+    const handleSelectPref = (category, value) => {
+        if (onChangePreferensi) {
+            onChangePreferensi({
+                ...preferensi,
+                [category]: value,
+            });
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -52,10 +93,10 @@ export default function IngredientModal({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-title"
-                className="relative w-full max-w-2xl glass-modal rounded-3xl p-6 sm:p-8 z-10 animate-slide-up my-auto"
+                className="relative w-full max-w-2xl glass-modal rounded-3xl p-6 sm:p-8 z-10 animate-slide-up my-auto max-h-[90vh] flex flex-col"
             >
                 {/* Header */}
-                <div className="flex items-start justify-between pb-5 border-b border-cream-300/60">
+                <div className="flex items-start justify-between pb-4 border-b border-cream-300/60 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-terracotta-500 text-white flex items-center justify-center shadow-soft-sm">
                             <ChefHat className="w-5 h-5" strokeWidth={2} />
@@ -81,7 +122,7 @@ export default function IngredientModal({
                 </div>
 
                 {/* Form Body */}
-                <div className="py-5 space-y-6">
+                <div className="py-4 space-y-5 overflow-y-auto flex-1 pr-1 custom-scrollbar">
                     {/* Bahan Utama */}
                     <div>
                         <TagInput
@@ -161,10 +202,142 @@ export default function IngredientModal({
                             })}
                         </div>
                     </div>
+
+                    {/* Expandable Preferences Accordion */}
+                    <div className="pt-2 border-t border-cream-200/80">
+                        <button
+                            type="button"
+                            onClick={() => setShowPreferences((prev) => !prev)}
+                            className="w-full flex items-center justify-between p-3 rounded-2xl bg-cream-100/70 hover:bg-cream-200/60 transition-all text-xs font-semibold text-charcoal-700"
+                        >
+                            <div className="flex items-center gap-2">
+                                <SlidersHorizontal className="w-3.5 h-3.5 text-terracotta-500" />
+                                <span>Preferensi Tambahan (Opsional)</span>
+                                {hasActivePreferences && (
+                                    <span className="px-2 py-0.5 rounded-full bg-terracotta-500 text-white text-[10px] font-bold">
+                                        Aktif
+                                    </span>
+                                )}
+                            </div>
+                            {showPreferences ? (
+                                <ChevronUp className="w-4 h-4 text-charcoal-400" />
+                            ) : (
+                                <ChevronDown className="w-4 h-4 text-charcoal-400" />
+                            )}
+                        </button>
+
+                        {showPreferences && (
+                            <div className="mt-3 p-4 rounded-2xl bg-white/70 border border-cream-200/80 space-y-3.5 animate-fade-in text-xs">
+                                {/* Waktu Masak */}
+                                <div>
+                                    <span className="block text-[11px] font-bold text-charcoal-600 mb-1.5 uppercase tracking-wider">
+                                        Waktu Memasak
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {filterOptions.waktu.map((opt) => {
+                                            const isSelected = (preferensi.waktu || 'Semua') === opt.value;
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => handleSelectPref('waktu', opt.value)}
+                                                    className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-all ${
+                                                        isSelected
+                                                            ? 'bg-charcoal-900 text-white border-charcoal-900 shadow-soft-xs'
+                                                            : 'bg-cream-50 text-charcoal-600 border-cream-300 hover:bg-cream-100'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Tingkat Pedas */}
+                                <div>
+                                    <span className="block text-[11px] font-bold text-charcoal-600 mb-1.5 uppercase tracking-wider">
+                                        Tingkat Pedas
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {filterOptions.pedas.map((opt) => {
+                                            const isSelected = (preferensi.pedas || 'Bebas') === opt.value;
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => handleSelectPref('pedas', opt.value)}
+                                                    className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-all ${
+                                                        isSelected
+                                                            ? 'bg-terracotta-500 text-white border-terracotta-500 shadow-soft-xs'
+                                                            : 'bg-cream-50 text-charcoal-600 border-cream-300 hover:bg-cream-100'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Metode Masak */}
+                                <div>
+                                    <span className="block text-[11px] font-bold text-charcoal-600 mb-1.5 uppercase tracking-wider">
+                                        Metode / Gaya Masak
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {filterOptions.metode.map((opt) => {
+                                            const isSelected = (preferensi.metode || 'Bebas') === opt.value;
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => handleSelectPref('metode', opt.value)}
+                                                    className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-all ${
+                                                        isSelected
+                                                            ? 'bg-sage-600 text-white border-sage-600 shadow-soft-xs'
+                                                            : 'bg-cream-50 text-charcoal-600 border-cream-300 hover:bg-cream-100'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Batasan Alat */}
+                                <div>
+                                    <span className="block text-[11px] font-bold text-charcoal-600 mb-1.5 uppercase tracking-wider">
+                                        Batasan Alat Masak
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {filterOptions.alat.map((opt) => {
+                                            const isSelected = (preferensi.alat || 'Semua Alat') === opt.value;
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => handleSelectPref('alat', opt.value)}
+                                                    className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-all ${
+                                                        isSelected
+                                                            ? 'bg-amber-600 text-white border-amber-600 shadow-soft-xs'
+                                                            : 'bg-cream-50 text-charcoal-600 border-cream-300 hover:bg-cream-100'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer */}
-                <div className="pt-4 border-t border-cream-300/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="pt-4 border-t border-cream-300/60 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
                     <div className="text-xs text-charcoal-400 text-center sm:text-left">
                         {!hasMinBahan ? (
                             <span className="text-charcoal-500 font-medium">

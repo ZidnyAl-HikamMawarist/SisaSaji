@@ -18,6 +18,12 @@ class RecipeController extends Controller
             'bahan_utama.*' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9\s]+$/'],
             'bumbu_dapur' => ['nullable', 'array', 'max:10'],
             'bumbu_dapur.*' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9\s]+$/'],
+            'preferensi' => ['nullable', 'array'],
+            'preferensi.waktu' => ['nullable', 'string', 'max:50'],
+            'preferensi.pedas' => ['nullable', 'string', 'max:50'],
+            'preferensi.metode' => ['nullable', 'string', 'max:50'],
+            'preferensi.alat' => ['nullable', 'string', 'max:50'],
+            'preferensi.variasi_dari' => ['nullable', 'string', 'max:100'],
         ], [
             'bahan_utama.required' => 'Bahan utama wajib diisi minimal 1 bahan.',
             'bahan_utama.min' => 'Bahan utama wajib diisi minimal 1 bahan.',
@@ -29,6 +35,7 @@ class RecipeController extends Controller
 
         $bahanUtama = $validated['bahan_utama'];
         $bumbuDapur = $validated['bumbu_dapur'] ?? [];
+        $preferensi = $validated['preferensi'] ?? [];
 
         $apiKey = config('services.gemini.api_key') ?: env('GEMINI_API_KEY');
         $model = config('services.gemini.model') ?: 'gemini-3.6-flash';
@@ -37,13 +44,13 @@ class RecipeController extends Controller
         if (empty($apiKey)) {
             return response()->json([
                 'success' => true,
-                'data' => $this->generateMockRecipe($bahanUtama, $bumbuDapur),
+                'data' => $this->generateMockRecipe($bahanUtama, $bumbuDapur, $preferensi),
                 'notice' => 'Catatan: Mode demonstrasi (GEMINI_API_KEY belum diisi di .env). Resep dihasilkan secara otomatis.',
             ]);
         }
 
         try {
-            $prompt = $this->buildPrompt($bahanUtama, $bumbuDapur);
+            $prompt = $this->buildPrompt($bahanUtama, $bumbuDapur, $preferensi);
 
             $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
@@ -80,7 +87,7 @@ class RecipeController extends Controller
                 Log::warning('Gemini returned unparseable JSON: ' . $rawText);
                 return response()->json([
                     'success' => true,
-                    'data' => $this->generateMockRecipe($bahanUtama, $bumbuDapur),
+                    'data' => $this->generateMockRecipe($bahanUtama, $bumbuDapur, $preferensi),
                     'notice' => 'Resep disesuaikan dari pola bahan.',
                 ]);
             }
@@ -122,7 +129,7 @@ class RecipeController extends Controller
             // Fallback gracefully so user experience is not broken
             return response()->json([
                 'success' => true,
-                'data' => $this->generateMockRecipe($bahanUtama, $bumbuDapur),
+                'data' => $this->generateMockRecipe($bahanUtama, $bumbuDapur, $preferensi),
                 'notice' => 'Resep dihasilkan via fallback offline karena terjadi kendala koneksi API.',
             ]);
         }
@@ -131,10 +138,28 @@ class RecipeController extends Controller
     /**
      * Build system and user prompt for Gemini AI.
      */
-    private function buildPrompt(array $bahanUtama, array $bumbuDapur): string
+    private function buildPrompt(array $bahanUtama, array $bumbuDapur, array $preferensi = []): string
     {
         $bahanStr = implode(', ', $bahanUtama);
-        $bumbuStr = count($bumbuDapur) > 0 ? implode(', ', $bumbuDapur) : 'Bumbu standar dapur sederhana (garam/minyak)';
+        $bumbuStr = count($bumbuDapur) > 0 ? implode(', ', $bumbuDapur) : 'Bumbu standar dapur sederhana (garam/gula/lada)';
+
+        $prefLines = [];
+        if (!empty($preferensi['waktu']) && $preferensi['waktu'] !== 'Semua') {
+            $prefLines[] = "- Target Waktu Masak: {$preferensi['waktu']}";
+        }
+        if (!empty($preferensi['pedas']) && $preferensi['pedas'] !== 'Bebas') {
+            $prefLines[] = "- Tingkat Pedas: {$preferensi['pedas']}";
+        }
+        if (!empty($preferensi['metode']) && $preferensi['metode'] !== 'Bebas') {
+            $prefLines[] = "- Metode/Gaya Masak: {$preferensi['metode']}";
+        }
+        if (!empty($preferensi['alat']) && $preferensi['alat'] !== 'Semua Alat') {
+            $prefLines[] = "- Batasan Alat Masak: {$preferensi['alat']}";
+        }
+        if (!empty($preferensi['variasi_dari'])) {
+            $prefLines[] = "- Permintaan Variasi: Buatlah kreasi resep alternatif yang BERBEDA gaya olahan/rasanya dari resep sebelumnya ('{$preferensi['variasi_dari']}').";
+        }
+        $prefStr = count($prefLines) > 0 ? "\nPreferensi Tambahan Pengguna:\n" . implode("\n", $prefLines) . "\n" : "";
 
         return <<<PROMPT
 Anda adalah Chef Konsultan Kuliner SisaSaji, pakar dalam kreasi resep praktis, hemat, dan lezat untuk anak kos serta mahasiswa kuliner dengan peralatan dan bahan terbatas.
@@ -143,7 +168,7 @@ Tugas Anda:
 Buatlah 1 resep masakan yang lezat dan realistis menggunakan bahan dan bumbu berikut:
 - Bahan Utama: {$bahanStr}
 - Bumbu Dapur: {$bumbuStr}
-
+{$prefStr}
 Aturan Wajib (Strict Rules):
 1. Wajib merespons HANYA dalam format JSON valid tanpa format markdown tambahan di luar JSON.
 2. Setiap langkah memasak ("langkah_memasak") HARUS memiliki detail dan keterangan lengkap yang sangat membantu pemula:
@@ -185,11 +210,61 @@ PROMPT;
     /**
      * Generate fallback/mock recipe when API key is not configured or in offline test mode.
      */
-    private function generateMockRecipe(array $bahanUtama, array $bumbuDapur): array
+    private function generateMockRecipe(array $bahanUtama, array $bumbuDapur, array $preferensi = []): array
     {
         $primaryBahan = implode(' & ', array_slice($bahanUtama, 0, 2));
         $allBahanStr = implode(', ', $bahanUtama);
-        $allBumbuStr = count($bumbuDapur) > 0 ? implode(', ', $bumbuDapur) : 'garam dan sedikit minyak';
+        $allBumbuStr = count($bumbuDapur) > 0 ? implode(', ', $bumbuDapur) : 'garam dan lada secukupnya';
+
+        $isKuah = isset($preferensi['metode']) && str_contains(strtolower($preferensi['metode']), 'kuah');
+        $isVariasi = !empty($preferensi['variasi_dari']);
+
+        if ($isKuah || ($isVariasi && !str_contains(strtolower($preferensi['variasi_dari'] ?? ''), 'sup'))) {
+            return [
+                'nama_resep' => 'Sup Hangat Segar: ' . $primaryBahan . ' Kaldu Gurih',
+                'alat_masak' => [
+                    'Panci Sedang',
+                    'Centong Sup',
+                    'Pisau & Talenan',
+                    'Kompor / Pemanas Listrik'
+                ],
+                'bahan_tambahan_opsional' => [
+                    'Irisan seledri & daun bawang',
+                    'Taburan bawang goreng',
+                    'Perasan jeruk nipis untuk kesegaran ekstra'
+                ],
+                'langkah_memasak' => [
+                    [
+                        'nomor' => 1,
+                        'instruksi' => 'Didihkan 500-700 ml air bersih dalam panci.',
+                        'durasi' => '5 - 7 menit',
+                        'api' => 'Api Besar',
+                        'keterangan' => 'Tunggu hingga air benar-benar mendidih bergolak sebelum memasukkan bumbu agar aroma kaldu lebih sedap.'
+                    ],
+                    [
+                        'nomor' => 2,
+                        'instruksi' => 'Geprek atau iris bumbu yang ada (' . $allBumbuStr . '), lalu masukkan ke dalam air rebusan.',
+                        'durasi' => '2 menit',
+                        'api' => 'Api Sedang',
+                        'keterangan' => 'Memasukkan bumbu saat air mendidih membuat sari bumbu langsung terekstraksi sempurna ke dalam kuah.'
+                    ],
+                    [
+                        'nomor' => 3,
+                        'instruksi' => 'Masukkan bahan utama (' . $allBahanStr . ') yang sudah dipotong rapi.',
+                        'durasi' => '4 - 6 menit',
+                        'api' => 'Api Sedang',
+                        'keterangan' => 'Masak hingga bahan matang empuk tapi tidak terlalu lembek.'
+                    ],
+                    [
+                        'nomor' => 4,
+                        'instruksi' => 'Bumbui dengan garam dan lada, koreksi rasa, lalu angkat dan sajikan hangat.',
+                        'durasi' => '1 menit',
+                        'api' => 'Tanpa Api',
+                        'keterangan' => 'Sajikan selagi kuah masih mengepul hangat untuk rasa paling nikmat.'
+                    ]
+                ]
+            ];
+        }
 
         return [
             'nama_resep' => 'Tumis Kreasi SisaSaji: ' . $primaryBahan . ' Bumbu Spesial',

@@ -12,22 +12,41 @@ import {
     Flame,
     Clock,
     Lightbulb,
+    ChefHat,
+    Bookmark,
+    Sparkles,
+    Timer,
 } from 'lucide-react';
 import Chip from './Chip';
+import StepTimer from './StepTimer';
+import KitchenFocusMode from './KitchenFocusMode';
 
 export default function RecipeResult({
     recipe,
     usedBahan = [],
     usedBumbu = [],
+    isSaved = false,
+    onToggleSave,
+    onRequestVariation,
     onOpenModal,
 }) {
     const [copied, setCopied] = useState(false);
     const [completedSteps, setCompletedSteps] = useState({});
+    const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
+    const [activeTimers, setActiveTimers] = useState({});
 
     if (!recipe) return null;
 
     const toggleStep = (index) => {
         setCompletedSteps((prev) => ({
+            ...prev,
+            [index]: !prev[index],
+        }));
+    };
+
+    const toggleTimerForStep = (index, e) => {
+        e?.stopPropagation();
+        setActiveTimers((prev) => ({
             ...prev,
             [index]: !prev[index],
         }));
@@ -73,7 +92,7 @@ export default function RecipeResult({
                 iconColor: 'text-charcoal-400',
             };
         }
-        // Default Api Sedang / lainnya
+        // Default Api Sedang
         return {
             color: 'bg-amber-50 text-amber-800 border-amber-200/80',
             iconColor: 'text-amber-500',
@@ -116,8 +135,8 @@ ${stepsFormatted}
 
     return (
         <div className="w-full max-w-3xl mx-auto my-4 sm:my-8 animate-fade-in space-y-5">
-            {/* Top Navigation Back to Home */}
-            <div className="flex items-center justify-between gap-3">
+            {/* Top Navigation & Toolbar Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <Link
                     href="/"
                     className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-charcoal-600 hover:text-charcoal-900 bg-white/80 hover:bg-white border border-cream-200/90 hover:border-charcoal-300 transition-all duration-200 active:scale-[0.97] shadow-soft-xs"
@@ -126,28 +145,56 @@ ${stepsFormatted}
                     <span>Kembali ke Beranda</span>
                 </Link>
 
-                {/* Copy button */}
-                <button
-                    type="button"
-                    onClick={handleCopy}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-200 active:scale-[0.97] shadow-soft-xs flex-shrink-0 ${
-                        copied
-                            ? 'bg-sage-50 border-sage-200 text-sage-700'
-                            : 'bg-white/80 border-cream-300 text-charcoal-600 hover:bg-cream-50 hover:border-charcoal-300'
-                    }`}
-                >
-                    {copied ? (
-                        <>
-                            <Check className="w-3.5 h-3.5 text-sage-600" strokeWidth={2.5} />
-                            <span>Tersalin</span>
-                        </>
-                    ) : (
-                        <>
-                            <Copy className="w-3.5 h-3.5 text-charcoal-500" strokeWidth={2} />
-                            <span>Salin Resep</span>
-                        </>
-                    )}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                    {/* Cooking Focus Mode Button */}
+                    <button
+                        type="button"
+                        onClick={() => setIsFocusModeOpen(true)}
+                        className="group inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-terracotta-500 hover:bg-terracotta-600 text-white shadow-terracotta-glow transition-all duration-200 active:scale-95"
+                        title="Buka tampilan layar penuh untuk panduan memasak di dapur"
+                    >
+                        <ChefHat className="w-3.5 h-3.5" strokeWidth={2.5} />
+                        <span>Fokus Masak</span>
+                    </button>
+
+                    {/* Bookmark / Save Recipe Button */}
+                    <button
+                        type="button"
+                        onClick={onToggleSave}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-200 active:scale-95 shadow-soft-xs ${
+                            isSaved
+                                ? 'bg-amber-50 border-amber-300 text-amber-800'
+                                : 'bg-white/80 border-cream-300 text-charcoal-600 hover:bg-cream-50 hover:border-charcoal-300'
+                        }`}
+                        title={isSaved ? 'Resep sudah tersimpan di Buku Resep' : 'Simpan ke Buku Resep'}
+                    >
+                        <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'text-amber-500 fill-current' : 'text-charcoal-500'}`} />
+                        <span>{isSaved ? 'Tersimpan' : 'Simpan'}</span>
+                    </button>
+
+                    {/* Copy button */}
+                    <button
+                        type="button"
+                        onClick={handleCopy}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-200 active:scale-[0.97] shadow-soft-xs ${
+                            copied
+                                ? 'bg-sage-50 border-sage-200 text-sage-700'
+                                : 'bg-white/80 border-cream-300 text-charcoal-600 hover:bg-cream-50 hover:border-charcoal-300'
+                        }`}
+                    >
+                        {copied ? (
+                            <>
+                                <Check className="w-3.5 h-3.5 text-sage-600" strokeWidth={2.5} />
+                                <span>Tersalin</span>
+                            </>
+                        ) : (
+                            <>
+                                <Copy className="w-3.5 h-3.5 text-charcoal-500" strokeWidth={2} />
+                                <span className="hidden sm:inline">Salin</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Recipe Header */}
@@ -263,6 +310,7 @@ ${stepsFormatted}
                             const data = getStepData(step, idx);
                             const isDone = !!completedSteps[idx];
                             const flameInfo = getFlameBadge(data.api);
+                            const showTimer = activeTimers[idx];
 
                             return (
                                 <div
@@ -308,13 +356,35 @@ ${stepsFormatted}
                                                     </span>
                                                 )}
 
-                                                {/* Duration / Waktu Badge */}
+                                                {/* Duration Badge with Interactive Timer toggle */}
                                                 {data.durasi && (
-                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-cream-100/90 text-charcoal-700 border border-cream-300 ${isDone ? 'opacity-50' : ''}`}>
-                                                        <Clock className="w-3.5 h-3.5 text-charcoal-500" strokeWidth={2} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => toggleTimerForStep(idx, e)}
+                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all active:scale-95 ${
+                                                            showTimer
+                                                                ? 'bg-amber-500 text-white border-amber-500'
+                                                                : 'bg-cream-100/90 hover:bg-amber-50 text-charcoal-700 hover:text-amber-800 border-cream-300 hover:border-amber-300'
+                                                        } ${isDone ? 'opacity-50' : ''}`}
+                                                        title="Buka / Tutup Timer untuk langkah ini"
+                                                    >
+                                                        <Clock className={`w-3.5 h-3.5 ${showTimer ? 'text-white' : 'text-charcoal-500'}`} strokeWidth={2} />
                                                         <span>{data.durasi}</span>
-                                                    </span>
+                                                        <span className="text-[10px] font-normal opacity-80 underline">
+                                                            {showTimer ? 'Tutup Timer' : 'Timer'}
+                                                        </span>
+                                                    </button>
                                                 )}
+                                            </div>
+                                        )}
+
+                                        {/* Inline Step Timer Component */}
+                                        {data.durasi && showTimer && (
+                                            <div className="pt-2 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+                                                <StepTimer
+                                                    durationStr={data.durasi}
+                                                    stepTitle={`Langkah ${idx + 1}`}
+                                                />
                                             </div>
                                         )}
 
@@ -342,8 +412,20 @@ ${stepsFormatted}
                 </div>
             </div>
 
-            {/* Bottom Actions — Clean & Focused */}
-            <div className="flex items-center justify-end pt-2">
+            {/* Bottom Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                {/* Alternative Variation button */}
+                {onRequestVariation && (
+                    <button
+                        type="button"
+                        onClick={onRequestVariation}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-cream-300 hover:border-amber-400 bg-white/80 hover:bg-white text-charcoal-700 hover:text-amber-900 text-xs font-bold transition-all active:scale-95 shadow-soft-xs"
+                    >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Minta Variasi Resep Lain</span>
+                    </button>
+                )}
+
                 <button
                     type="button"
                     onClick={onOpenModal}
@@ -353,6 +435,15 @@ ${stepsFormatted}
                     <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2} />
                 </button>
             </div>
+
+            {/* Fullscreen Kitchen Focus Mode Modal */}
+            <KitchenFocusMode
+                isOpen={isFocusModeOpen}
+                onClose={() => setIsFocusModeOpen(false)}
+                recipe={recipe}
+                completedSteps={completedSteps}
+                onToggleStep={toggleStep}
+            />
         </div>
     );
 }
