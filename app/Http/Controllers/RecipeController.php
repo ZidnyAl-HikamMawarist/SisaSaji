@@ -88,7 +88,28 @@ class RecipeController extends Controller
             // Ensure expected array structure
             $recipeData['alat_masak'] = $recipeData['alat_masak'] ?? ['Wajan / Panci', 'Spatula', 'Kompor'];
             $recipeData['bahan_tambahan_opsional'] = $recipeData['bahan_tambahan_opsional'] ?? [];
-            $recipeData['langkah_memasak'] = $recipeData['langkah_memasak'] ?? [];
+            
+            $normalizedSteps = [];
+            foreach (($recipeData['langkah_memasak'] ?? []) as $i => $step) {
+                if (is_array($step)) {
+                    $normalizedSteps[] = [
+                        'nomor' => $step['nomor'] ?? ($i + 1),
+                        'instruksi' => $step['instruksi'] ?? ($step['text'] ?? ($step['step'] ?? '')),
+                        'durasi' => $step['durasi'] ?? null,
+                        'api' => $step['api'] ?? null,
+                        'keterangan' => $step['keterangan'] ?? ($step['tips'] ?? null),
+                    ];
+                } else {
+                    $normalizedSteps[] = [
+                        'nomor' => $i + 1,
+                        'instruksi' => (string) $step,
+                        'durasi' => null,
+                        'api' => null,
+                        'keterangan' => null,
+                    ];
+                }
+            }
+            $recipeData['langkah_memasak'] = $normalizedSteps;
 
             return response()->json([
                 'success' => true,
@@ -125,7 +146,13 @@ Buatlah 1 resep masakan yang lezat dan realistis menggunakan bahan dan bumbu ber
 
 Aturan Wajib (Strict Rules):
 1. Wajib merespons HANYA dalam format JSON valid tanpa format markdown tambahan di luar JSON.
-2. Skema JSON harus tepat seperti berikut:
+2. Setiap langkah memasak ("langkah_memasak") HARUS memiliki detail dan keterangan lengkap yang sangat membantu pemula:
+   - "nomor": nomor urut langkah (integer: 1, 2, 3, dst.)
+   - "instruksi": penjelasan tindakan utama langkah memasak secara jelas
+   - "durasi": estimasi durasi waktu langkah (contoh: "3 - 5 menit", "1 - 2 menit", "10 menit", atau "30 detik")
+   - "api": intensitas api kompor yang digunakan (pilih salah satu: "Api Besar", "Api Sedang", "Api Kecil", "Api Sedang-Kecil", atau "Tanpa Api" untuk tahap persiapan/penyajian)
+   - "keterangan": tips atau keterangan penting saat mengeksekusi langkah tersebut (contoh: "Tunggu air mendidih bergolak sebelum memasukkan bahan agar sayur tidak layu berlebih", "Aduk konstan dengan api sedang agar bumbu tidak gosong", "Tutup wajan agar daging matang merata hingga ke dalam")
+3. Skema JSON harus tepat seperti berikut:
 {
   "nama_resep": "Nama masakan yang menarik dan menggugah selera",
   "alat_masak": [
@@ -135,13 +162,23 @@ Aturan Wajib (Strict Rules):
     "Saran 1-3 bahan/garnis tambahan opsional untuk memperkaya rasa jika pengguna memilikinya nanti"
   ],
   "langkah_memasak": [
-    "Langkah 1: Siapkan dan potong bahan...",
-    "Langkah 2: Panaskan sedikit minyak dan tumis bumbu...",
-    "Langkah 3: Masukkan bahan utama dan masak hingga matang...",
-    "Langkah 4: Sajikan selagi hangat..."
+    {
+      "nomor": 1,
+      "instruksi": "Didihkan air dalam panci untuk merebus bahan...",
+      "durasi": "5 - 7 menit",
+      "api": "Api Besar",
+      "keterangan": "Tunggu hingga air benar-benar mendidih bergolak sebelum bahan dimasukkan."
+    },
+    {
+      "nomor": 2,
+      "instruksi": "Panaskan sedikit minyak dan tumis bumbu halus...",
+      "durasi": "1 - 2 menit",
+      "api": "Api Sedang",
+      "keterangan": "Tumis konstan hingga bumbu harum dan berubah warna kekuningan."
+    }
   ]
 }
-3. Pastikan langkah memasak ringkas, jelas, dan mudah diikuti oleh pemula.
+4. Pastikan langkah memasak ringkas, jelas, dan mudah diikuti oleh pemula.
 PROMPT;
     }
 
@@ -164,17 +201,52 @@ PROMPT;
             ],
             'bahan_tambahan_opsional' => [
                 'Irisan daun bawang atau seledri untuk aroma segar',
-                'Taburan bawang goreng',
+                'Taburan bawang goreng renyah',
                 'Sedikit kecap manis atau saus sambal sesuai selera'
             ],
             'langkah_memasak' => [
-                'Siapkan dan cuci bersih semua bahan utama (' . $allBahanStr . '). Potong sesuai selera dengan ukuran seragam agar matang merata.',
-                'Haluskan atau cincang bumbu dapur yang tersedia (' . $allBumbuStr . ').',
-                'Panaskan 1-2 sendok makan minyak di wajan dengan api sedang.',
-                'Tumis bumbu hingga mengeluarkan aroma harum dan sedikit layu.',
-                'Masukkan bahan utama (' . $allBahanStr . ') satu per satu mulai dari bahan yang membutuhkan waktu matang lebih lama.',
-                'Aduk rata hingga semua bumbu meresap sempurna. Tambahkan sedikit air jika perlu.',
-                'Koreksi rasa, angkat dan sajikan Tumis Kreasi ' . $primaryBahan . ' selagi hangat!'
+                [
+                    'nomor' => 1,
+                    'instruksi' => 'Siapkan dan cuci bersih semua bahan utama (' . $allBahanStr . '). Potong sesuai selera dengan ukuran seragam.',
+                    'durasi' => '3 - 5 menit',
+                    'api' => 'Tanpa Api',
+                    'keterangan' => 'Memotong bahan dengan ukuran seragam membantu semua bagian matang merata pada saat bersamaan.'
+                ],
+                [
+                    'nomor' => 2,
+                    'instruksi' => 'Haluskan atau cincang bumbu dapur yang tersedia (' . $allBumbuStr . ').',
+                    'durasi' => '2 - 3 menit',
+                    'api' => 'Tanpa Api',
+                    'keterangan' => 'Cincangan yang lebih halus membuat aroma bumbu lebih cepat keluar dan meresap ke bahan utama.'
+                ],
+                [
+                    'nomor' => 3,
+                    'instruksi' => 'Panaskan 1-2 sendok makan minyak goreng di wajan atau teflon.',
+                    'durasi' => '1 menit',
+                    'api' => 'Api Sedang',
+                    'keterangan' => 'Gunakan api sedang agar minyak panas merata tanpa cepat berasap atau hangus.'
+                ],
+                [
+                    'nomor' => 4,
+                    'instruksi' => 'Tumis bumbu halus hingga mengeluarkan aroma harum dan warnanya sedikit keemasan.',
+                    'durasi' => '1 - 2 menit',
+                    'api' => 'Api Sedang',
+                    'keterangan' => 'Aduk secara perlahan dan konstan agar bumbu tidak gosong di bagian dasar wajan.'
+                ],
+                [
+                    'nomor' => 5,
+                    'instruksi' => 'Masukkan bahan utama (' . $allBahanStr . ') ke dalam wajan. Aduk rata bersama bumbu.',
+                    'durasi' => '4 - 6 menit',
+                    'api' => 'Api Sedang',
+                    'keterangan' => 'Dahulukan bahan yang membutuhkan waktu matang lebih lama. Tambahkan 2-3 sdm air jika bumbu terlalu kering.'
+                ],
+                [
+                    'nomor' => 6,
+                    'instruksi' => 'Koreksi rasa masakan, matikan kompor, lalu angkat dan sajikan Tumis Kreasi ' . $primaryBahan . ' selagi hangat!',
+                    'durasi' => '1 menit',
+                    'api' => 'Tanpa Api',
+                    'keterangan' => 'Cicipi sedikit bumbu sebelum diangkat, tambahkan sedikit garam jika dirasa masih kurang gurih.'
+                ]
             ]
         ];
     }
